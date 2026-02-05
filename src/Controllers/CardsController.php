@@ -43,13 +43,16 @@ class CardsController
         $data = Response::input();
         $db = Database::getConnection();
 
+        $abs1Access = $this->toBool($data['abs1_access'] ?? false);
+        $abs2Access = $this->toBool($data['abs2_access'] ?? false);
+
         $stmt = $db->prepare('INSERT INTO access_cards (user_id, abs1_access, abs2_access)
                               VALUES (:user_id, :abs1_access, :abs2_access)
                               RETURNING id');
         $stmt->execute([
             ':user_id' => $data['user_id'] ?? null,
-            ':abs1_access' => (bool)($data['abs1_access'] ?? false),
-            ':abs2_access' => (bool)($data['abs2_access'] ?? false),
+            ':abs1_access' => $abs1Access,
+            ':abs2_access' => $abs2Access,
         ]);
         $cardId = $stmt->fetchColumn();
 
@@ -75,13 +78,18 @@ class CardsController
                                   abs2_access = :abs2_access,
                                   updated_at = NOW()
                               WHERE id = :id');
+        $abs1Access = $this->toBool($data['abs1_access'] ?? false);
+        $abs2Access = $this->toBool($data['abs2_access'] ?? false);
         $stmt->execute([
-            ':abs1_access' => (bool)($data['abs1_access'] ?? false),
-            ':abs2_access' => (bool)($data['abs2_access'] ?? false),
+            ':abs1_access' => $abs1Access,
+            ':abs2_access' => $abs2Access,
             ':id' => $id,
         ]);
 
-        $changes = $this->diffChanges($current, $data);
+        $changes = $this->diffChanges($current, [
+            'abs1_access' => $abs1Access,
+            'abs2_access' => $abs2Access,
+        ]);
         $this->syncRelations($db, $id, $data, $changes);
 
         if (!empty($changes)) {
@@ -268,5 +276,22 @@ class CardsController
             ':action' => $action,
             ':details' => json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
+    }
+
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $normalized = mb_strtolower(trim($value));
+            if ($normalized === '' || $normalized === '0' || $normalized === 'false' || $normalized === 'нет') {
+                return false;
+            }
+            if ($normalized === '1' || $normalized === 'true' || $normalized === 'да') {
+                return true;
+            }
+        }
+        return (bool)$value;
     }
 }
