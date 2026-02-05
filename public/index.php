@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/Database.php';
-require_once __DIR__ . '/../src/Router.php';
-require_once __DIR__ . '/../src/Controllers/Response.php';
-require_once __DIR__ . '/../src/Controllers/LookupsController.php';
-require_once __DIR__ . '/../src/Controllers/UsersController.php';
-require_once __DIR__ . '/../src/Controllers/CardsController.php';
+require_once __DIR__ . '/src/Database.php';
+require_once __DIR__ . '/src/Router.php';
+require_once __DIR__ . '/src/Controllers/Response.php';
+require_once __DIR__ . '/src/Controllers/LookupsController.php';
+require_once __DIR__ . '/src/Controllers/UsersController.php';
+require_once __DIR__ . '/src/Controllers/CardsController.php';
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
