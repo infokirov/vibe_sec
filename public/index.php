@@ -44,7 +44,7 @@ if (str_starts_with($uri, '/api/')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Карточки доступа</title>
-    <link rel="stylesheet" href="/assets/styles.css">
+    <link rel="stylesheet" href="/assets/styles.css?v=<?= filemtime(__DIR__ . '/assets/styles.css') ?>">
 </head>
 <body>
     <header class="app-header">
@@ -177,6 +177,6 @@ if (str_starts_with($uri, '/api/')) {
         </div>
     </div>
 
-    <script src="/assets/app.js"></script>
+    <script src="/assets/app.js?v=<?= filemtime(__DIR__ . '/assets/app.js') ?>"></script>
 </body>
 </html>

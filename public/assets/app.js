@@ -9,11 +9,11 @@ const state = {
 const api = {
     async get(url) {
         const res = await fetch(url);
+        const payload = await parseResponse(res);
         if (!res.ok) {
-            const message = await res.text();
-            throw new Error(message || `Ошибка запроса: ${res.status}`);
+            throw new Error(payload.message || `Ошибка запроса: ${res.status}`);
         }
-        return res.json();
+        return payload;
     },
     async send(url, method, body) {
         const res = await fetch(url, {
@@ -21,11 +21,11 @@ const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
+        const payload = await parseResponse(res);
         if (!res.ok) {
-            const message = await res.text();
-            throw new Error(message || `Ошибка запроса: ${res.status}`);
+            throw new Error(payload.message || `Ошибка запроса: ${res.status}`);
         }
-        return res.json();
+        return payload;
     },
 };
 
@@ -386,4 +386,21 @@ function normalizeDetails(details) {
         }
     }
     return details;
+}
+
+async function parseResponse(response) {
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+    if (contentType.includes('application/json')) {
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            return { message: text };
+        }
+    }
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return { message: text || response.statusText };
+    }
 }
