@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: access_cards
+      DB_USER: access_user
+      DB_PASSWORD: access_pass
+    depends_on:
+      - db
+    volumes:
+      - ./public:/var/www/html
+      - ./src:/var/www/html/src
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: access_cards
+      POSTGRES_USER: access_user
+      POSTGRES_PASSWORD: access_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
