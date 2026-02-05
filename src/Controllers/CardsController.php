@@ -43,6 +43,12 @@ class CardsController
         $data = Response::input();
         $db = Database::getConnection();
 
+        $userId = $this->toNullableInt($data['user_id'] ?? null);
+        if ($userId === null) {
+            Response::json(['message' => 'Выберите пользователя для карточки'], 422);
+            return;
+        }
+
         $abs1Access = $this->toBool($data['abs1_access'] ?? false);
         $abs2Access = $this->toBool($data['abs2_access'] ?? false);
 
@@ -50,7 +56,7 @@ class CardsController
                               VALUES (:user_id, :abs1_access, :abs2_access)
                               RETURNING id');
         $stmt->execute([
-            ':user_id' => $data['user_id'] ?? null,
+            ':user_id' => $userId,
             ':abs1_access' => $abs1Access,
             ':abs2_access' => $abs2Access,
         ]);
@@ -211,9 +217,9 @@ class CardsController
 
     private function syncRelations(PDO $db, string $cardId, array $data, array &$changes = []): void
     {
-        $this->syncPivot($db, $cardId, 'access_card_resources', 'resource_id', $data['resources'] ?? [], 'resources', $changes, 'ресурсы');
-        $this->syncPivot($db, $cardId, 'access_card_internet_resources', 'resource_id', $data['internet_resources'] ?? [], 'internet_resources', $changes, 'интернет-ресурсы');
-        $this->syncPivot($db, $cardId, 'access_card_software', 'resource_id', $data['software'] ?? [], 'software', $changes, 'ПО');
+        $this->syncPivot($db, $cardId, 'access_card_resources', 'resource_id', $this->toIntArray($data['resources'] ?? []), 'resources', $changes, 'ресурсы');
+        $this->syncPivot($db, $cardId, 'access_card_internet_resources', 'resource_id', $this->toIntArray($data['internet_resources'] ?? []), 'internet_resources', $changes, 'интернет-ресурсы');
+        $this->syncPivot($db, $cardId, 'access_card_software', 'resource_id', $this->toIntArray($data['software'] ?? []), 'software', $changes, 'ПО');
     }
 
     private function syncPivot(PDO $db, string $cardId, string $table, string $column, array $newIds, string $changeKey, array &$changes, string $label): void
@@ -293,5 +299,44 @@ class CardsController
             }
         }
         return (bool)$value;
+    }
+
+    private function toNullableInt($value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return null;
+            }
+            if (is_numeric($trimmed)) {
+                return (int)$trimmed;
+            }
+            return null;
+        }
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int)$value;
+        }
+        return null;
+    }
+
+    private function toIntArray($values): array
+    {
+        if (!is_array($values)) {
+            return [];
+        }
+        $result = [];
+        foreach ($values as $value) {
+            $intValue = $this->toNullableInt($value);
+            if ($intValue !== null) {
+                $result[] = $intValue;
+            }
+        }
+        return $result;
     }
 }

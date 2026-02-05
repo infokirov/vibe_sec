@@ -33,6 +33,12 @@ class UsersController
         $data = Response::input();
         $db = Database::getConnection();
 
+        $fullName = trim((string)($data['full_name'] ?? ''));
+        if ($fullName === '') {
+            Response::json(['message' => 'ФИО обязательно для заполнения'], 422);
+            return;
+        }
+
         $isTerminated = $this->toBool($data['is_terminated'] ?? false);
         $isManager = $this->toBool($data['is_manager'] ?? false);
         $isDirector = $this->toBool($data['is_director'] ?? false);
@@ -42,11 +48,11 @@ class UsersController
                               VALUES (:full_name, :department_id, :position_id, :is_terminated, :manager_id, :is_manager, :is_director, :is_executor)
                               RETURNING id');
         $stmt->execute([
-            ':full_name' => $data['full_name'] ?? '',
-            ':department_id' => $data['department_id'] ?? null,
-            ':position_id' => $data['position_id'] ?? null,
+            ':full_name' => $fullName,
+            ':department_id' => $this->toNullableInt($data['department_id'] ?? null),
+            ':position_id' => $this->toNullableInt($data['position_id'] ?? null),
             ':is_terminated' => $isTerminated,
-            ':manager_id' => $data['manager_id'] ?? null,
+            ':manager_id' => $this->toNullableInt($data['manager_id'] ?? null),
             ':is_manager' => $isManager,
             ':is_director' => $isDirector,
             ':is_executor' => $isExecutor,
@@ -60,6 +66,12 @@ class UsersController
     {
         $data = Response::input();
         $db = Database::getConnection();
+
+        $fullName = trim((string)($data['full_name'] ?? ''));
+        if ($fullName === '') {
+            Response::json(['message' => 'ФИО обязательно для заполнения'], 422);
+            return;
+        }
 
         $isTerminated = $this->toBool($data['is_terminated'] ?? false);
         $isManager = $this->toBool($data['is_manager'] ?? false);
@@ -77,11 +89,11 @@ class UsersController
                                   is_executor = :is_executor
                               WHERE id = :id');
         $stmt->execute([
-            ':full_name' => $data['full_name'] ?? '',
-            ':department_id' => $data['department_id'] ?? null,
-            ':position_id' => $data['position_id'] ?? null,
+            ':full_name' => $fullName,
+            ':department_id' => $this->toNullableInt($data['department_id'] ?? null),
+            ':position_id' => $this->toNullableInt($data['position_id'] ?? null),
             ':is_terminated' => $isTerminated,
-            ':manager_id' => $data['manager_id'] ?? null,
+            ':manager_id' => $this->toNullableInt($data['manager_id'] ?? null),
             ':is_manager' => $isManager,
             ':is_director' => $isDirector,
             ':is_executor' => $isExecutor,
@@ -145,5 +157,29 @@ class UsersController
             }
         }
         return (bool)$value;
+    }
+
+    private function toNullableInt($value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return null;
+            }
+            if (is_numeric($trimmed)) {
+                return (int)$trimmed;
+            }
+            return null;
+        }
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int)$value;
+        }
+        return null;
     }
 }
