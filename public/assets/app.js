@@ -9,6 +9,10 @@ const state = {
 const api = {
     async get(url) {
         const res = await fetch(url);
+        if (!res.ok) {
+            const message = await res.text();
+            throw new Error(message || `Ошибка запроса: ${res.status}`);
+        }
         return res.json();
     },
     async send(url, method, body) {
@@ -17,6 +21,10 @@ const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
+        if (!res.ok) {
+            const message = await res.text();
+            throw new Error(message || `Ошибка запроса: ${res.status}`);
+        }
         return res.json();
     },
 };
@@ -131,7 +139,7 @@ function renderHistory() {
     state.history.forEach((entry) => {
         const item = document.createElement('div');
         item.className = 'history-item';
-        const details = entry.details ? JSON.parse(entry.details) : {};
+        const details = normalizeDetails(entry.details);
         item.innerHTML = `
             <div><strong>${entry.action}</strong> · ${new Date(entry.created_at).toLocaleString('ru-RU')}</div>
             <pre>${JSON.stringify(details, null, 2)}</pre>
@@ -175,6 +183,10 @@ async function loadCards() {
     const data = await api.get('/api/cards');
     state.cards = data.cards || [];
     renderCards();
+    if (!state.selectedCardId && state.cards.length) {
+        state.selectedCardId = String(state.cards[0].id);
+        await loadHistory(state.selectedCardId);
+    }
 }
 
 async function loadHistory(cardId) {
@@ -257,14 +269,18 @@ userForm.addEventListener('submit', async (event) => {
         is_executor: selectById('isExecutor').checked,
     };
     const id = selectById('userId').value;
-    if (id) {
-        await api.send(`/api/users/${id}`, 'PUT', payload);
-    } else {
-        await api.send('/api/users', 'POST', payload);
+    try {
+        if (id) {
+            await api.send(`/api/users/${id}`, 'PUT', payload);
+        } else {
+            await api.send('/api/users', 'POST', payload);
+        }
+        closeModal(userModal);
+        await loadUsers();
+        await loadCards();
+    } catch (error) {
+        alert(error.message);
     }
-    closeModal(userModal);
-    await loadUsers();
-    await loadCards();
 });
 
 cardForm.addEventListener('submit', async (event) => {
@@ -278,13 +294,17 @@ cardForm.addEventListener('submit', async (event) => {
         abs2_access: selectById('abs2Access').checked,
     };
     const id = selectById('cardId').value;
-    if (id) {
-        await api.send(`/api/cards/${id}`, 'PUT', payload);
-    } else {
-        await api.send('/api/cards', 'POST', payload);
+    try {
+        if (id) {
+            await api.send(`/api/cards/${id}`, 'PUT', payload);
+        } else {
+            await api.send('/api/cards', 'POST', payload);
+        }
+        closeModal(cardModal);
+        await loadCards();
+    } catch (error) {
+        alert(error.message);
     }
-    closeModal(cardModal);
-    await loadCards();
 });
 
 window.addEventListener('click', (event) => {
@@ -307,41 +327,63 @@ elements.statusFilter.addEventListener('change', () => loadUsers());
 
 document.addEventListener('click', async (event) => {
     const target = event.target;
-    if (target.matches('[data-edit-user]')) {
-        const user = state.users.find((u) => String(u.id) === target.dataset.editUser);
-        if (user) {
-            openUserModal(user);
+    try {
+        if (target.matches('[data-edit-user]')) {
+            const user = state.users.find((u) => String(u.id) === target.dataset.editUser);
+            if (user) {
+                openUserModal(user);
+            }
         }
-    }
-    if (target.matches('[data-copy-user]')) {
-        await api.send(`/api/users/${target.dataset.copyUser}/copy`, 'POST', {});
-        await loadUsers();
-    }
-    if (target.matches('[data-delete-user]')) {
-        await api.send(`/api/users/${target.dataset.deleteUser}`, 'DELETE', {});
-        await loadUsers();
-        await loadCards();
-    }
-    if (target.matches('[data-edit-card]')) {
-        await openCardModal(target.dataset.editCard);
-    }
-    if (target.matches('[data-delete-card]')) {
-        await api.send(`/api/cards/${target.dataset.deleteCard}`, 'DELETE', {});
-        await loadCards();
-    }
-    if (target.matches('[data-view-history]')) {
-        state.selectedCardId = target.dataset.viewHistory;
-        await loadHistory(state.selectedCardId);
-    }
-    if (target.matches('[data-print-card]')) {
-        window.open(`/api/cards/${target.dataset.printCard}/print`, '_blank');
+        if (target.matches('[data-copy-user]')) {
+            await api.send(`/api/users/${target.dataset.copyUser}/copy`, 'POST', {});
+            await loadUsers();
+        }
+        if (target.matches('[data-delete-user]')) {
+            await api.send(`/api/users/${target.dataset.deleteUser}`, 'DELETE', {});
+            await loadUsers();
+            await loadCards();
+        }
+        if (target.matches('[data-edit-card]')) {
+            await openCardModal(target.dataset.editCard);
+        }
+        if (target.matches('[data-delete-card]')) {
+            await api.send(`/api/cards/${target.dataset.deleteCard}`, 'DELETE', {});
+            await loadCards();
+        }
+        if (target.matches('[data-view-history]')) {
+            state.selectedCardId = target.dataset.viewHistory;
+            await loadHistory(state.selectedCardId);
+        }
+        if (target.matches('[data-print-card]')) {
+            window.open(`/api/cards/${target.dataset.printCard}/print`, '_blank');
+        }
+    } catch (error) {
+        alert(error.message);
     }
 });
 
 async function init() {
-    await loadLookups();
-    await loadUsers();
-    await loadCards();
+    try {
+        await loadLookups();
+        await loadUsers();
+        await loadCards();
+    } catch (error) {
+        alert(error.message);
+    }
 }
 
 init();
+
+function normalizeDetails(details) {
+    if (!details) {
+        return {};
+    }
+    if (typeof details === 'string') {
+        try {
+            return JSON.parse(details);
+        } catch (error) {
+            return { raw: details };
+        }
+    }
+    return details;
+}
