@@ -33,6 +33,11 @@ class UsersController
         $data = Response::input();
         $db = Database::getConnection();
 
+        $isTerminated = $this->toBool($data['is_terminated'] ?? false);
+        $isManager = $this->toBool($data['is_manager'] ?? false);
+        $isDirector = $this->toBool($data['is_director'] ?? false);
+        $isExecutor = $this->toBool($data['is_executor'] ?? true);
+
         $stmt = $db->prepare('INSERT INTO users (full_name, department_id, position_id, is_terminated, manager_id, is_manager, is_director, is_executor)
                               VALUES (:full_name, :department_id, :position_id, :is_terminated, :manager_id, :is_manager, :is_director, :is_executor)
                               RETURNING id');
@@ -40,11 +45,11 @@ class UsersController
             ':full_name' => $data['full_name'] ?? '',
             ':department_id' => $data['department_id'] ?? null,
             ':position_id' => $data['position_id'] ?? null,
-            ':is_terminated' => (bool)($data['is_terminated'] ?? false),
+            ':is_terminated' => $isTerminated,
             ':manager_id' => $data['manager_id'] ?? null,
-            ':is_manager' => (bool)($data['is_manager'] ?? false),
-            ':is_director' => (bool)($data['is_director'] ?? false),
-            ':is_executor' => (bool)($data['is_executor'] ?? true),
+            ':is_manager' => $isManager,
+            ':is_director' => $isDirector,
+            ':is_executor' => $isExecutor,
         ]);
         $id = $stmt->fetchColumn();
 
@@ -55,6 +60,11 @@ class UsersController
     {
         $data = Response::input();
         $db = Database::getConnection();
+
+        $isTerminated = $this->toBool($data['is_terminated'] ?? false);
+        $isManager = $this->toBool($data['is_manager'] ?? false);
+        $isDirector = $this->toBool($data['is_director'] ?? false);
+        $isExecutor = $this->toBool($data['is_executor'] ?? true);
 
         $stmt = $db->prepare('UPDATE users
                               SET full_name = :full_name,
@@ -70,11 +80,11 @@ class UsersController
             ':full_name' => $data['full_name'] ?? '',
             ':department_id' => $data['department_id'] ?? null,
             ':position_id' => $data['position_id'] ?? null,
-            ':is_terminated' => (bool)($data['is_terminated'] ?? false),
+            ':is_terminated' => $isTerminated,
             ':manager_id' => $data['manager_id'] ?? null,
-            ':is_manager' => (bool)($data['is_manager'] ?? false),
-            ':is_director' => (bool)($data['is_director'] ?? false),
-            ':is_executor' => (bool)($data['is_executor'] ?? true),
+            ':is_manager' => $isManager,
+            ':is_director' => $isDirector,
+            ':is_executor' => $isExecutor,
             ':id' => $id,
         ]);
 
@@ -118,5 +128,22 @@ class UsersController
         $newId = $insert->fetchColumn();
 
         Response::json(['id' => $newId], 201);
+    }
+
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $normalized = mb_strtolower(trim($value));
+            if ($normalized === '' || $normalized === '0' || $normalized === 'false' || $normalized === 'нет') {
+                return false;
+            }
+            if ($normalized === '1' || $normalized === 'true' || $normalized === 'да') {
+                return true;
+            }
+        }
+        return (bool)$value;
     }
 }
